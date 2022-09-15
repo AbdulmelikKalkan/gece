@@ -62,12 +62,23 @@ type certificateField struct {
 	NotAfter           int
 }
 
+func init() {
+	flag.BoolVar(&flagCa, "ca", false, "generate ca cert.")
+	flag.BoolVar(&flagCert, "cert", false, "generate cert.")
+	flag.BoolVar(&flagSign, "sign-ca", false, "sign certificate with ca")
+	flag.StringVar(&flagOutPem, "outpem", "", "output pem file")
+	flag.StringVar(&flagOutKey, "outkey", "", "output key file")
+	flag.StringVar(&flagInCAPem, "inca", "", "input pem file")
+	flag.StringVar(&flagInCAKey, "inkey", "", "input key file")
+}
+
 func main() {
 
 	// Manipulate flag usage message
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of :\n")
 		flag.PrintDefaults()
+		fmt.Printf("For more information: https://github.com/AbdulmelikKalkan/gece\n")
 	}
 
 	// Parse parses flag definitions from the argument list
@@ -75,14 +86,17 @@ func main() {
 
 	var caCertificate ca
 	var selfSignCertificate cert
+
 	switch {
 	case flagCa && !flagCert && !flagSign:
+		// generate certificate authority
 		caCertificate.generateCA()
 		writeCert(caCertificate.certPem.Bytes(), caCertificate.privPem.Bytes())
 	case flagCa && flagCert:
-		flag.PrintDefaults()
+		usageInfo()
 		os.Exit(1)
 	case flagCert && !flagSign:
+		// generate certificate
 		selfSignCertificate.generateCert()
 		writeCert(selfSignCertificate.certPem.Bytes(), selfSignCertificate.privPem.Bytes())
 	case flagCert && flagSign && len(flag.Args()) == 0:
@@ -92,7 +106,6 @@ func main() {
 		writeCert(selfSignCertificate.certPem.Bytes(), selfSignCertificate.privPem.Bytes())
 	case flagCert && flagSign && len(flag.Args()) > 0:
 		fmt.Println("Generate cert and sign ca which is given with parameters")
-		fmt.Println("Arguments: ", flag.Args())
 
 		if flagInCAPem != "" && flagInCAKey != "" {
 			caPem, err := os.ReadFile(flagInCAPem)
@@ -112,20 +125,10 @@ func main() {
 		}
 
 	default:
-		flag.PrintDefaults()
+		usageInfo()
 		os.Exit(0)
 	}
 
-}
-
-func init() {
-	flag.BoolVar(&flagCa, "ca", false, "generate ca cert.")
-	flag.BoolVar(&flagCert, "cert", false, "generate cert.")
-	flag.BoolVar(&flagSign, "sign-ca", false, "sign certificate with ca")
-	flag.StringVar(&flagOutPem, "outpem", "", "output pem file")
-	flag.StringVar(&flagOutKey, "outkey", "", "output key file")
-	flag.StringVar(&flagInCAPem, "inca", "", "input pem file")
-	flag.StringVar(&flagInCAKey, "inkey", "", "input key file")
 }
 
 func (ca *ca) generateCA() {
@@ -299,7 +302,6 @@ func (c *certificateField) setCA() {
 	v := reflect.ValueOf(*c)
 	typeOfS := v.Type()
 	for i := 0; i < v.NumField(); i++ {
-		// fmt.Printf("Field: %s\tValue: %v\n", typeOfS.Field(i).Name, v.Field(i).Interface())
 		switch typeOfS.Field(i).Name {
 		case "Country":
 			fmt.Printf("Country: ")
@@ -400,4 +402,10 @@ func checkErr(e error) {
 	if e != nil {
 		panic(e)
 	}
+}
+
+func usageInfo() {
+	fmt.Fprintf(flag.CommandLine.Output(), "Usage of :\n")
+	flag.PrintDefaults()
+	fmt.Printf("For more information: https://github.com/AbdulmelikKalkan/gece\n")
 }
